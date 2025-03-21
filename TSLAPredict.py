@@ -57,7 +57,7 @@ y = y_scaler.fit_transform(data['Next_Day_Close'].values.reshape(-1, 1))
 # Create sequences
 X = []
 y_seq = []
-sequence_length = 3
+sequence_length = 2
 
 for i in range(len(data) - sequence_length):
     X.append(data[features].iloc[i:i+sequence_length].values)
