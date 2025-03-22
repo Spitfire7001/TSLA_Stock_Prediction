@@ -8,6 +8,29 @@ from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.optimizers import Adam
 import matplotlib.pyplot as plt
 import yfinance as yf
+from datetime import datetime, timedelta
+import csv
+
+# Variable to control if data is to be downloaded
+download_data = 0
+if download_data == 1:
+    # Obtain stock data from yfinance
+    ticker = "TSLA"
+    start_date = "2010-06-29"
+    end_date = (datetime.today() + timedelta(days=1)).strftime("%Y-%m-%d")
+
+    data = yf.download(ticker, start=start_date, end=end_date, interval="1d")
+    data.to_csv("TSLA_Data.csv")
+
+    # Modify header to proper values
+    with open('TSLA_Data.csv', 'r', newline='') as infile:
+        reader = list(csv.reader(infile))
+        reader[0] = ['Date', 'Close', 'High', 'Low', 'Open', 'Volume']
+        reader.pop(1)
+        reader.pop(1)
+
+    with open('TSLA_Data.csv', 'w', newline='') as outfile:
+        csv.writer(outfile).writerows(reader)
 
 # Load data from CSV file
 data = pd.read_csv('TSLA_Data.csv')
@@ -18,24 +41,19 @@ data.sort_values('Date', inplace=True)
 # Feature engineer other variables
 data['Price_Range'] = data['High'] - data['Low']
 data['Daily_Change'] = data['Close'] - data['Open']
-
 data['Next_Day_Close'] = data['Close'].shift(-1)
 data['Log_Return'] = np.log(data['Close'] / data['Close'].shift(1))
 data['Log_Return_Volatility'] = data['Log_Return'].rolling(window=2).std() * np.sqrt(252)
 data['Pct_Change'] = data['Close'].pct_change() * 100
 data['daily_return'] = data['Close'].pct_change()
-
 data['Prev_Close'] = data['Close'].shift(1)
-
 data['True_Range'] = np.maximum(data['High'] - data['Low'],
                                 np.maximum(abs(data['High'] - data['Prev_Close']),
                                            abs(data['Low'] - data['Prev_Close'])))
-
-
 data['ATR'] = data['True_Range'].rolling(window=2).mean()
-
 data = data.drop(columns=['Prev_Close'])
 
+# Set the last "Next_Day_Close" value to -1
 latest_row = data.iloc[-1].copy()
 latest_row['Next_Day_Close'] = -1
 
@@ -94,27 +112,24 @@ print("Model training complete!")
 
 # Make prediction for next days closing price
 next_day_pred = model.predict(latest_data)
-
-# Unscale the prediction to get actual values
 next_day_price = y_scaler.inverse_transform(next_day_pred)
 
-
-# Commented since yfinance has received too many reqs
-# Grabs current price of TSLA stock as of running the code
-"""
-# Fetch the stock data
-stock = yf.Ticker('TSLA')
-
-# Get the latest market data (1 minute interval)
-stock_data = stock.history(period="1d", interval="1m")
-
 # Get the most recent closing price
+stock = yf.Ticker('TSLA')
+stock_data = stock.history(period="1d", interval="1m")
 current_price = stock_data['Close'][-1]
 
+# Print current and predicted price and give advice
 print(f"The current price of TSLA is: ${current_price}")
-"""
 print(f"Predicted next day's closing price: {next_day_price[0][0]}")
 
+if current_price < next_day_price:
+    print('Advice = Buy')
+else:
+    print('Advice = Sell') 
+
+# Below code generates graph for visual views of predictions
+'''
 # Create sequences for the entire dataset with corresponding dates
 X_full = []
 y_actual = []
@@ -122,8 +137,8 @@ dates = []
 
 for i in range(len(data) - sequence_length):
     X_full.append(data[features].iloc[i:i+sequence_length].values)
-    y_actual.append(y[i+sequence_length])  # Actual values
-    dates.append(data['Date'].iloc[i+sequence_length])  # Store corresponding date
+    y_actual.append(y[i+sequence_length])
+    dates.append(data['Date'].iloc[i+sequence_length])
 
 X_full = np.array(X_full)
 y_actual = np.array(y_actual)
@@ -147,7 +162,6 @@ y_pred = np.append(y_pred, next_day_pred)
 y_actual = np.append(y_actual, np.nan)
 
 # Plot actual vs predicted prices
-# note: price day after present is zero since we don't know what it is
 plt.figure(figsize=(12, 6))
 plt.plot(dates[:-1], y_actual[:-1], label="Actual Closing Price", color='blue', linewidth=1)
 plt.plot(dates, y_pred, label="Predicted Closing Price", color='red', linewidth=1)
@@ -159,5 +173,4 @@ plt.xticks(rotation=45)
 plt.legend()
 plt.grid(True)
 plt.show()
-
-print(f"Predicted closing price for {next_day_date.strftime('%Y-%m-%d')}: ${next_day_pred:.2f}")
+'''
