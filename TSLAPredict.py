@@ -12,13 +12,15 @@ from datetime import datetime, timedelta
 import csv
 import os
 
-download_data = 0
-current_directory = os.getcwd()
-data_path = os.path.join(current_directory,'TSLA_Data.csv')
-if not os.path.exists(data_path):
-    download_data = 1
+download_data = 1 # Manual download control set to 1 for submission
 
 if download_data == 1:
+
+    current_directory = os.getcwd()
+    data_path = os.path.join(current_directory,'TSLA_Data.csv')
+    if os.path.exists(data_path):
+        os.remove(data_path)
+
     # Obtain stock data from yfinance
     ticker = "TSLA"
     start_date = "2010-06-29"
@@ -38,6 +40,7 @@ if download_data == 1:
         csv.writer(outfile).writerows(reader)
 
 # Load data from CSV file
+print("Reading in CSV TESLA Data")
 data = pd.read_csv('TSLA_Data.csv')
 
 data['Date'] = pd.to_datetime(data['Date'])
@@ -80,7 +83,7 @@ y = y_scaler.fit_transform(data['Next_Day_Close'].values.reshape(-1, 1))
 # Create sequences
 X = []
 y_seq = []
-sequence_length = 2
+sequence_length = 3
 
 for i in range(len(data) - sequence_length):
     X.append(data[features].iloc[i:i+sequence_length].values)
@@ -126,14 +129,15 @@ current_price = stock_data['Close'][-1]
 
 # Print current and predicted price and give advice
 print(f"The current price of TSLA is: ${current_price}")
-print(f"Predicted next day's closing price: {next_day_price[0][0]}")
+print(f"Predicted next day's closing price: ${next_day_price[0][0]}")
 
-if current_price < next_day_price[0][0]:
+if current_price < (next_day_price[0][0] - 3):
     print('Advice = Buy')
-else:
+elif (current_price > (next_day_price[0][0] - 3)) and (current_price < (next_day_price[0][0] + 3)):
+    print('Advice = HOLD')
+elif current_price > (next_day_price[0][0] + 3):
     print('Advice = Sell') 
 
-# Below code generates graph for visual views of predictions
 '''
 # Create sequences for the entire dataset with corresponding dates
 X_full = []
