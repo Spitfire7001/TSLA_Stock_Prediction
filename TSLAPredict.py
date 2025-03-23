@@ -10,9 +10,14 @@ import matplotlib.pyplot as plt
 import yfinance as yf
 from datetime import datetime, timedelta
 import csv
+import os
 
-# Variable to control if data is to be downloaded
 download_data = 0
+current_directory = os.getcwd()
+data_path = os.path.join(current_directory,'TSLA_Data.csv')
+if not os.path.exists(data_path):
+    download_data = 1
+
 if download_data == 1:
     # Obtain stock data from yfinance
     ticker = "TSLA"
@@ -123,7 +128,7 @@ current_price = stock_data['Close'][-1]
 print(f"The current price of TSLA is: ${current_price}")
 print(f"Predicted next day's closing price: {next_day_price[0][0]}")
 
-if current_price < next_day_price:
+if current_price < next_day_price[0][0]:
     print('Advice = Buy')
 else:
     print('Advice = Sell') 
